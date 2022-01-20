@@ -81,7 +81,7 @@ def clean_data() -> Iterable[dict[str, str]]:
                     data[k.strip()] = v
             if data["combined_address"] == "":
                 yield data
-            yield run_geocoding(data)
+            yield data
 
 
 def get_file_lines() -> int:
@@ -97,9 +97,9 @@ def main():
     """Runs the geocoding."""
     file_lines = get_file_lines()
     with open("data/geocoded_records.jsonl", "w") as f:
-        for result in track(
-            clean_data(), description="Running pipeline...", total=file_lines
-        ):
+        data = clean_data()
+        for record in track(data, description="Running pipeline...", total=file_lines):
+            result = run_geocoding(record)
             json_data = json.dumps(result) + "\n"
             f.write(json_data)
 
