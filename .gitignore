@@ -129,3 +129,8 @@ dmypy.json
 .pyre/
 
 .vscode/
+data/drug_results.csv
+data/geocoded_records.jsonl
+data/mil_scraped.jsonl
+data/no_duplicates.jsonl
+data/records.csv
