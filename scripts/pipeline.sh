@@ -24,4 +24,7 @@ mv ~/go/bin/output.csv data/drug_results.csv
 rm ~/go/bin/output.jsonl
 echo "------------"
 
+echo "Generating report..."
+pandas_profiling data/records.csv reports/report.html --title "Milwaukee Data Report"
+echo "------------"
 echo "DONE! 😃"
