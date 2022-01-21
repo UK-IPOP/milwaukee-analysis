@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import defaultdict
 import json
 
 import os
@@ -33,11 +34,15 @@ def run_geocoding(address: dict[str, str]) -> dict[str, str]:
         "ymax": 43.12,
         "spatialReference": {"wkid": 4326},
     }
-    geocoded_info = geocode(
-        address["combined_address"],
-        search_extent=search_bounds,
-        location_type="rooftop",
-    )
+    try:
+        geocoded_info = geocode(
+            address["combined_address"],
+            search_extent=search_bounds,
+            location_type="rooftop",
+        )
+    except:
+        print(f"Failed to geocode {address['combined_address']}")
+        return address
     if geocoded_info:
         best_result = geocoded_info[0]
         geo_data = {
@@ -52,54 +57,71 @@ def run_geocoding(address: dict[str, str]) -> dict[str, str]:
         return address
 
 
+def remove_duplicates() -> int:
+    """Removes duplicate records.
+
+    Gets number of lines in scraped data file for progress bar.
+
+    Returns:
+        int: Number of lines in file.
+        dict
+    """
+    data = defaultdict(dict)
+    with open("data/mil_scraped.jsonl", "r") as f:
+        for line in f:
+            info: dict[str, str] = json.loads(line)
+            cleaned = {k: v for k, v in info.items() if v != " " and v != "" and v}
+            unwanted_fields = {"XCoordinate", "YCoordinate", "CaseNum_STR", "ESRI_OID"}
+            cleaned = dict()
+            for k, v in info.items():
+                if k in unwanted_fields:
+                    continue
+                str_val = str(v).strip()
+                if str_val and str_val != "":  # not none and not empty str
+                    cleaned[k.strip()] = str_val
+            data[cleaned["CaseNum"]].update(cleaned)
+            data[cleaned["CaseNum"]].update(cleaned)
+
+    count = 0
+    with open("data/no_duplicates.jsonl", "w") as f:
+        for _, v in data.items():
+            json_data = json.dumps(v) + "\n"
+            count += 1
+            f.write(json_data)
+
+    return count
+
+
 def clean_data() -> Iterable[dict[str, str]]:
     """Read data from file and generate some new composite fields.
 
     Yields:
         dict: A record with the new composite/cleaned fields.
     """
-    with open("data/mil_scraped.jsonl", "r") as file:
+    with open("data/no_duplicates.jsonl", "r") as file:
         for line in file:
             info: dict[str, str] = json.loads(line)
-            address = info["EventAddr"].strip() if info["EventAddr"] else ""
-            city = info["EventCity"].strip() if info["EventCity"] else ""
-            state = info["EventState"].strip() if info["EventState"] else ""
-            zip_code = info["EventZip"].strip() if info["EventZip"] else ""
-            info["combined_address"] = f"{address} {city} {state} {zip_code}"
-            causea = info["CauseA"].strip() if info["CauseA"] else ""
-            causeb = info["CauseB"].strip() if info["CauseB"] else ""
-            cause_other = info["CauseOther"].strip() if info["CauseOther"] else ""
-            info["combined_causes"] = f"{causea} {causeb} {cause_other}"
-            unwanted_fields = {"XCoordinate", "YCoordinate", "CaseNum_STR", "ESRI_OID"}
-            data = dict()
-            for k, v in info.items():
-                if k in unwanted_fields:
-                    continue
-                if type(v) == str:
-                    data[k.strip()] = v.strip()
-                else:
-                    data[k.strip()] = v
-            if data["combined_address"] == "":
-                yield data
-            yield run_geocoding(data)
-
-
-def get_file_lines() -> int:
-    """Gets number of lines in scraped data file for progress bar."""
-    count = 0
-    with open("data/mil_scraped.jsonl", "r") as f:
-        for _ in f:
-            count += 1
-    return count
+            address = info.get("EventAddr", "").strip()
+            city = info.get("EventCity", "").strip()
+            state = info.get("EventState", "").strip()
+            zip_code = info.get("EventZip", "").strip()
+            combined_address = f"{address}, {city}, {state} {zip_code}"
+            info["combined_address"] = combined_address
+            causea = info.get("CauseA", "").strip()
+            causeb = info.get("CauseB", "").strip()
+            cause_other = info.get("CauseOther", "").strip()
+            combined_causes = f"{causea}, {causeb}, {cause_other}"
+            info["combined_causes"] = combined_causes
+            yield info
 
 
 def main():
     """Runs the geocoding."""
-    file_lines = get_file_lines()
+    file_lines = remove_duplicates()
     with open("data/geocoded_records.jsonl", "w") as f:
-        for result in track(
-            clean_data(), description="Running pipeline...", total=file_lines
-        ):
+        data = clean_data()
+        for record in track(data, description="Running pipeline...", total=file_lines):
+            result = run_geocoding(record)
             json_data = json.dumps(result) + "\n"
             f.write(json_data)
 
