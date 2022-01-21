@@ -136,3 +136,4 @@ data/no_duplicates.jsonl
 data/records.csv
 
 reports/
+.DS_Store

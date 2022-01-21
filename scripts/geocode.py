@@ -3,7 +3,6 @@ from collections import defaultdict
 import json
 
 import os
-from typing import Iterable
 
 import dotenv
 from arcgis.geocoding import geocode
@@ -92,12 +91,13 @@ def remove_duplicates() -> int:
     return count
 
 
-def clean_data() -> Iterable[dict[str, str]]:
+def clean_data() -> list[dict[str, str]]:
     """Read data from file and generate some new composite fields.
 
     Yields:
         dict: A record with the new composite/cleaned fields.
     """
+    data = []
     with open("data/no_duplicates.jsonl", "r") as file:
         for line in file:
             info: dict[str, str] = json.loads(line)
@@ -112,15 +112,19 @@ def clean_data() -> Iterable[dict[str, str]]:
             cause_other = info.get("CauseOther", "").strip()
             combined_causes = f"{causea}, {causeb}, {cause_other}"
             info["combined_causes"] = combined_causes
-            yield info
+            data.append(info)
+    return data
 
 
 def main():
     """Runs the geocoding."""
-    file_lines = remove_duplicates()
+    _ = remove_duplicates()
+    data = clean_data()
     with open("data/geocoded_records.jsonl", "w") as f:
-        data = clean_data()
-        for record in track(data, description="Running pipeline...", total=file_lines):
+        for record in track(
+            data,
+            description="Running pipeline...",
+        ):
             result = run_geocoding(record)
             json_data = json.dumps(result) + "\n"
             f.write(json_data)
