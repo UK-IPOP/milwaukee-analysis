@@ -34,11 +34,15 @@ def run_geocoding(address: dict[str, str]) -> dict[str, str]:
         "ymax": 43.12,
         "spatialReference": {"wkid": 4326},
     }
-    geocoded_info = geocode(
-        address["combined_address"],
-        search_extent=search_bounds,
-        location_type="rooftop",
-    )
+    try:
+        geocoded_info = geocode(
+            address["combined_address"],
+            search_extent=search_bounds,
+            location_type="rooftop",
+        )
+    except:
+        print(f"Failed to geocode {address['combined_address']}")
+        return address
     if geocoded_info:
         best_result = geocoded_info[0]
         geo_data = {
