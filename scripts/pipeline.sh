@@ -1,30 +1,38 @@
 #! /usr/bin/env bash
 
 echo "Fetching data..."
-poetry run python scripts/fetch_data.py
+# poetry run python scripts/fetch_data.py
 echo "------------"
 
 echo "Geocoding data..."
 poetry run python scripts/geocode.py
 echo "------------"
 
-echo "Installing drug extraction tool..."
-go install github.com/UK-IPOP/drug-extraction@latest
-echo "------------"
-
 echo "Converting jsonlines to csv..."
-cat data/geocoded_records.jsonl | jq --slurp -r '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows | $cols, $rows[] | @csv' > data/records.csv
+poetry run python scripts/postprocess.py
 
 echo "Running drug extraction tool..."
-drug-extraction pipeline data/records.csv --target-col="combined_causes" --id-col="CaseNum" --format --format-type=csv
+de-workflow \
+    execute \
+    --algorithm="osa" \
+    data/records.csv \
+    "CaseNum" \
+    "combined_causes" 
 
-echo "Removing output..."
-# this will be in CWD when drug tool fixed
-mv ~/go/bin/output.csv data/drug_results.csv
-rm ~/go/bin/output.jsonl
-echo "------------"
+echo "Moving drug files..."
+mv report.html data/drug_report.html
+mv merged_results.csv data/merged_results.csv
+mv dense_results.csv data/dense_results.csv
 
-echo "Generating report..."
-pandas_profiling data/records.csv reports/report.html --title "Milwaukee Data Report"
+echo "Generating pandas report..."
+pandas_profiling data/records.csv data/pandas_report.html --title "Milwaukee Data Report"
+
+
+echo "Copying files to OneDrive..."
+cp data/drug_report.html ~/OneDrive\ -\ University\ of\ Kentucky/Data\ Stuff/Milwaukee\ Data/
+cp data/merged_results.csv ~/OneDrive\ -\ University\ of\ Kentucky/Data\ Stuff/Milwaukee\ Data/
+cp data/dense_results.csv ~/OneDrive\ -\ University\ of\ Kentucky/Data\ Stuff/Milwaukee\ Data/
+cp data/pandas_report.html ~/OneDrive\ -\ University\ of\ Kentucky/Data\ Stuff/Milwaukee\ Data/
+
 echo "------------"
 echo "DONE! 😃"
