@@ -7,7 +7,7 @@ import os
 import dotenv
 from arcgis.geocoding import geocode
 from arcgis.gis import GIS
-from rich.progress import track
+from tqdm import tqdm
 from rich import pretty, print
 
 
@@ -121,10 +121,7 @@ def main():
     _ = remove_duplicates()
     data = clean_data()
     with open("data/geocoded_records.jsonl", "w") as f:
-        for record in track(
-            data,
-            description="Running pipeline...",
-        ):
+        for record in tqdm(data):
             result = run_geocoding(record)
             json_data = json.dumps(result) + "\n"
             f.write(json_data)
