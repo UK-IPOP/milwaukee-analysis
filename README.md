@@ -1,5 +1,7 @@
 # Analyses for Milwaukee, WI Open Data
 
+> This has been moved to [https://github.com/UK-IPOP/open-data-pipeline](https://github.com/UK-IPOP/open-data-pipeline)
+
 ## Description
 
 Original site can be found [here](https://county.milwaukee.gov/EN/Medical-Examiner/Public-Data).
